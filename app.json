@@ -22,6 +22,15 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "photosPermission": "Выбор и загрузка изображений.",
+          "cameraPermission": "Разрешить $(PRODUCT_NAME) доступ к вашей камере."
+        }
+      ]
+    ]
   }
 }
