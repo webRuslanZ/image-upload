@@ -1,9 +1,9 @@
 import { StatusBar } from "expo-status-bar";
 import {
+  ActivityIndicator,
   Button,
+  FlatList,
   Image,
-  SafeAreaView,
-  ScrollView,
   StyleSheet,
   Text,
   View,
@@ -11,6 +11,7 @@ import {
 import * as FileSystem from "expo-file-system";
 import * as ImagePicker from "expo-image-picker";
 import { useEffect, useState } from "react";
+import Ionicons from "@expo/vector-icons/Ionicons";
 
 //Каталог документов в файлах телефона. (Обычно она используется для хранения пользовательских файлов приложения)
 const imgDir = FileSystem.documentDirectory + "images/";
@@ -27,7 +28,7 @@ const ensureDirExists = async () => {
 
 export default function App() {
   const [images, setImages] = useState<string[]>([]);
-  const [loading, setLoading] = useState<boolean>(true);
+  const [loading, setLoading] = useState<boolean>(false);
 
   useEffect(() => {
     loadImages();
@@ -68,9 +69,50 @@ export default function App() {
     await ensureDirExists();
     const fileName = new Date().getTime() + ".jpg";
     const dest = imgDir + fileName;
+    //копируем в файловую систему фото из кэша в dest
     await FileSystem.copyAsync({ from: uri, to: dest });
 
     setImages([...images, dest]);
+  };
+
+  const deleteImage = async (uri: string) => {
+    await FileSystem.deleteAsync(uri);
+    setImages(images.filter((i) => i !== uri));
+  };
+
+  const uploadImage = async (uri: string) => {
+    setLoading(true);
+
+    await FileSystem.uploadAsync("http://google.com", uri, {
+      httpMethod: "POST",
+      uploadType: FileSystem.FileSystemUploadType.MULTIPART,
+      fieldName: "file",
+    });
+
+    setLoading(false);
+  };
+
+  const renderItem = ({ item }: { item: string }) => {
+    const fileName = item.split("/").pop();
+
+    return (
+      <View
+        style={{
+          flexDirection: "row",
+          margin: 1,
+          alignItems: "center",
+          gap: 5,
+        }}
+      >
+        <Image width={80} height={80} source={{ uri: item }} />
+        <Text style={{ flex: 1 }}>{fileName}</Text>
+        <Ionicons.Button
+          name="cloud-upload"
+          onPress={() => uploadImage(item)}
+        />
+        <Ionicons.Button name="trash" onPress={() => deleteImage(item)} />
+      </View>
+    );
   };
 
   return (
@@ -80,15 +122,23 @@ export default function App() {
         <Button title="Capture image" onPress={() => selectImage(false)} />
       </View>
 
-      <ScrollView>
-        {images.map((img) => (
-          <Image
-            key={img}
-            source={{ uri: img }}
-            style={{ width: 300, height: 300 }}
-          />
-        ))}
-      </ScrollView>
+      <Text style={{ textAlign: "center" }}>Моя галлерея</Text>
+      <FlatList data={images} renderItem={renderItem} />
+
+      {loading && (
+        <View
+          style={[
+            StyleSheet.absoluteFill,
+            {
+              backgroundColor: "rgba(0,0,0,0.4)",
+              alignItems: "center",
+              justifyContent: "center",
+            },
+          ]}
+        >
+          <ActivityIndicator color="#fff" animating size="large" />
+        </View>
+      )}
     </View>
   );
 }
@@ -98,11 +148,9 @@ const styles = StyleSheet.create({
     marginTop: 50,
     flex: 1,
     backgroundColor: "#fff",
-    justifyContent: "center",
-    alignItems: "center",
   },
   buttonsContainer: {
     flexDirection: "row",
-    gap: 55,
+    gap: 10,
   },
 });
